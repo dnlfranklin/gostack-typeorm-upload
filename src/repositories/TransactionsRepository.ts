@@ -34,7 +34,10 @@ class TransactionsRepository extends Repository<Transaction> {
   }
 
   public async all(): Promise<All> {
-    const transactions = await this.find();
+    const transactions = await this.find({
+      select: ['id', 'title', 'value', 'type'],
+      relations: ['category'],
+    });
     const balance = await this.getBalance();
 
     return { transactions, balance };
