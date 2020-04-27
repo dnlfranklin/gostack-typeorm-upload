@@ -23,33 +23,31 @@ class CreateTransactionService {
   }: Request): Promise<Transaction> {
     if (value < 0) throw new AppError('Value not allowed for value property');
 
+    if (type !== 'income' && type !== 'outcome')
+      throw new AppError('Invalid value for type property');
+
     const transactionRepository = getCustomRepository(TransactionsRepository);
     const categoryRepository = getRepository(Category);
 
     if (type === 'outcome') {
-      const balance = await transactionRepository.getBalance();
+      const { total } = await transactionRepository.getBalance();
 
-      if (balance.total < value)
-        throw new AppError('You have insufficient funds.');
-    } else if (type !== 'income')
-      throw new AppError('Invalid value for type property');
+      if (total < value) throw new AppError('You have insufficient funds.');
+    }
 
-    const getCategoryId = async () => {
-      const categoryExists = await categoryRepository.findOne({
-        where: { title: category },
-      });
+    let transactionCategory = await categoryRepository.findOne({
+      where: { title: category },
+    });
 
-      if (categoryExists) {
-        return categoryExists.id;
-      }
-      const newCategory = categoryRepository.create({
+    if (!transactionCategory) {
+      transactionCategory = categoryRepository.create({
         title: category,
       });
-      await categoryRepository.save(newCategory);
-      return newCategory.id;
-    };
 
-    const category_id = await getCategoryId();
+      await categoryRepository.save(transactionCategory);
+    }
+
+    const category_id = transactionCategory.id;
 
     const transaction = transactionRepository.create({
       title,
